@@ -1,0 +1,132 @@
+name: Build Release APK
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+env:
+  TG_BOT_TOKEN: ${{ secrets.API }}
+  TG_CHAT_ID: "6373984454"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Send start notification
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${{ env.TG_BOT_TOKEN }}/sendMessage" \
+            -d chat_id="${{ env.TG_CHAT_ID }}" \
+            -d text="🚀 *LTQuiz Build Started*%0A%0A📱 Building Release APK...%0A⏰ Started at: $(date '+%Y-%m-%d %H:%M:%S UTC')" \
+            -d parse_mode="Markdown"
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Send progress update
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${{ env.TG_BOT_TOKEN }}/sendMessage" \
+            -d chat_id="${{ env.TG_CHAT_ID }}" \
+            -d text="✅ Checkout code%0A⏳ Setting up Java..." \
+            -d parse_mode="Markdown"
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Send progress update
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${{ env.TG_BOT_TOKEN }}/sendMessage" \
+            -d chat_id="${{ env.TG_CHAT_ID }}" \
+            -d text="✅ Checkout code%0A✅ Setup Java%0A⏳ Setting up Android SDK..." \
+            -d parse_mode="Markdown"
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          api-level: 35
+          build-tools: 35.0.0
+
+      - name: Send progress update
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${{ env.TG_BOT_TOKEN }}/sendMessage" \
+            -d chat_id="${{ env.TG_CHAT_ID }}" \
+            -d text="✅ Checkout code%0A✅ Setup Java%0A✅ Setup Android SDK%0A⏳ Caching Gradle..." \
+            -d parse_mode="Markdown"
+
+      - name: Cache Gradle packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - name: Send progress update
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${{ env.TG_BOT_TOKEN }}/sendMessage" \
+            -d chat_id="${{ env.TG_CHAT_ID }}" \
+            -d text="✅ Checkout code%0A✅ Setup Java%0A✅ Setup Android SDK%0A✅ Cache Gradle%0A⏳ Preparing build..." \
+            -d parse_mode="Markdown"
+
+      - name: Make gradlew executable
+        run: chmod +x gradlew
+
+      - name: Clean project
+        run: ./gradlew clean
+
+      - name: Send progress update
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${{ env.TG_BOT_TOKEN }}/sendMessage" \
+            -d chat_id="${{ env.TG_CHAT_ID }}" \
+            -d text="✅ Checkout code%0A✅ Setup Java%0A✅ Setup Android SDK%0A✅ Cache Gradle%0A✅ Prepare build%0A⏳ Building Release APK..." \
+            -d parse_mode="Markdown"
+
+      - name: Build release APK
+        run: ./gradlew assembleRelease -x lintVitalAnalyzeRelease --stacktrace
+
+      - name: Send progress update
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${{ env.TG_BOT_TOKEN }}/sendMessage" \
+            -d chat_id="${{ env.TG_CHAT_ID }}" \
+            -d text="✅ Checkout code%0A✅ Setup Java%0A✅ Setup Android SDK%0A✅ Cache Gradle%0A✅ Prepare build%0A✅ Build Release APK%0A⏳ Preparing APK for upload..." \
+            -d parse_mode="Markdown"
+
+      - name: Get APK info
+        id: apk_info
+        run: |
+          APK_PATH=$(find app/build/outputs/apk/release -name "*.apk" | head -1)
+          APK_SIZE=$(du -h "$APK_PATH" | cut -f1)
+          APK_NAME=$(basename "$APK_PATH")
+          echo "apk_path=$APK_PATH" >> $GITHUB_OUTPUT
+          echo "apk_size=$APK_SIZE" >> $GITHUB_OUTPUT
+          echo "apk_name=$APK_NAME" >> $GITHUB_OUTPUT
+
+      - name: Send APK to Telegram
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${{ env.TG_BOT_TOKEN }}/sendDocument" \
+            -F chat_id="${{ env.TG_CHAT_ID }}" \
+            -F document=@"${{ steps.apk_info.outputs.apk_path }}" \
+            -F caption="🎉 *LTQuiz Release APK Built Successfully!*%0A%0A📱 *APK Details:*%0A• Name: \`${{ steps.apk_info.outputs.apk_name }}\`%0A• Size: ${{ steps.apk_info.outputs.apk_size }}%0A• Version: 1.0 (1)%0A• Package: com.ltquiz.test%0A%0A✅ Ready to install on Android devices!%0A⏰ Completed at: $(date '+%Y-%m-%d %H:%M:%S UTC')" \
+            -F parse_mode="Markdown"
+
+      - name: Send final status
+        if: success()
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${{ env.TG_BOT_TOKEN }}/sendMessage" \
+            -d chat_id="${{ env.TG_CHAT_ID }}" \
+            -d text="✅ Checkout code%0A✅ Setup Java%0A✅ Setup Android SDK%0A✅ Cache Gradle%0A✅ Prepare build%0A✅ Build Release APK%0A✅ Upload APK%0A%0A🎉 *Build Completed Successfully!*" \
+            -d parse_mode="Markdown"
+
+      - name: Send error notification
+        if: failure()
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${{ env.TG_BOT_TOKEN }}/sendMessage" \
+            -d chat_id="${{ env.TG_CHAT_ID }}" \
+            -d text="❌ *Build Failed!*%0A%0A🔍 Check the GitHub Actions logs for details.%0A⏰ Failed at: $(date '+%Y-%m-%d %H:%M:%S UTC')" \
+            -d parse_mode="Markdown"
