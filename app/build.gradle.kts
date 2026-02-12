@@ -1,7 +1,10 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.compose.compiler)
+    alias(libs.plugins.hilt)
+    alias(libs.plugins.ksp)
 }
 
 android {
@@ -39,6 +42,12 @@ android {
     kotlinOptions {
         jvmTarget = "17"
     }
+
+    testOptions {
+        unitTests {
+            isIncludeAndroidResources = true
+        }
+    }
 }
 
 dependencies {
@@ -49,6 +58,42 @@ dependencies {
     implementation(composeBom)
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.ui.tooling.preview)
+    
+    // Hilt dependencies
+    implementation(libs.hilt.android)
+    ksp(libs.hilt.compiler)
+    
+    // WebSocket dependencies
+    implementation(libs.okhttp)
+    
+    // Serialization dependencies
+    implementation(libs.kotlinx.serialization.json)
+    
+    // QR Code dependencies
+    implementation(libs.zxing.core)
+    implementation(libs.zxing.android.embedded)
+    
+    // MLKit and Camera dependencies
+    implementation(libs.mlkit.barcode.scanning)
+    implementation(libs.camerax.core)
+    implementation(libs.camerax.camera2)
+    implementation(libs.camerax.lifecycle)
+    implementation(libs.camerax.view)
+    
+    // WebRTC dependencies
+    implementation(libs.webrtc.android)
+    
+    // Navigation dependencies
+    implementation(libs.navigation.compose)
+    implementation(libs.navigation.hilt)
+    
+    // Animation dependencies
+    implementation(libs.lottie.compose)
+    
+    // Test dependencies
+    testImplementation(libs.junit.jupiter)
+    testImplementation(libs.mockk)
+    testImplementation(libs.kotlinx.coroutines.test)
     
     debugImplementation(libs.androidx.compose.ui.tooling.core)
 }

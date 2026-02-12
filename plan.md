@@ -415,7 +415,7 @@ Stability & reconnection
 
 An app that:
 
-* Your mom can use
+* Your grampa can use
 * Your friends can join in 3 seconds
 * Feels instant like XSender
 * Structured like Zoom

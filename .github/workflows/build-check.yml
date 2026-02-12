@@ -1,0 +1,77 @@
+name: Quick Build Check
+
+on:
+  push:
+    branches: [ "main", "develop" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+env:
+  TG_BOT_TOKEN: ${{ secrets.API }}
+  TG_CHAT_ID: "6373984454"
+
+jobs:
+  quick-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Send start notification
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${{ env.TG_BOT_TOKEN }}/sendMessage" \
+            -d chat_id="${{ env.TG_CHAT_ID }}" \
+            -d text="⚡ *Quick Build Check Started*%0A%0A🔍 Validating if build will succeed..." \
+            -d parse_mode="Markdown"
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          api-level: 35
+          build-tools: 35.0.0
+
+      - name: Cache Gradle packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - name: Make gradlew executable
+        run: chmod +x gradlew
+
+      - name: Quick build validation
+        run: |
+          # Just compile without building full APK - much faster
+          ./gradlew compileReleaseKotlin compileReleaseJavaWithJavac --no-daemon --stacktrace
+          
+          # Check if resources compile
+          ./gradlew processReleaseResources --no-daemon --stacktrace
+
+      - name: Send success notification
+        if: success()
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${{ env.TG_BOT_TOKEN }}/sendMessage" \
+            -d chat_id="${{ env.TG_CHAT_ID }}" \
+            -d text="✅ *BUILD WILL SUCCEED* ✅%0A%0A🎉 Your code compiles successfully!%0A⚡ Quick check completed in ~3-5 minutes%0A%0A💡 You can now run the full build with confidence." \
+            -d parse_mode="Markdown"
+
+      - name: Send failure notification
+        if: failure()
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${{ env.TG_BOT_TOKEN }}/sendMessage" \
+            -d chat_id="${{ env.TG_CHAT_ID }}" \
+            -d text="❌ *BUILD WILL FAIL* ❌%0A%0A🚫 Compilation errors detected!%0A⚡ Quick check failed - fix issues before full build%0A%0A🔍 Check GitHub Actions logs for details." \
+            -d parse_mode="Markdown"

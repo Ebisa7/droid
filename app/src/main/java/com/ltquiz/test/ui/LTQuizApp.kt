@@ -16,29 +16,24 @@
 
 package com.ltquiz.test.ui
 
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import com.ltquiz.test.ui.components.ErrorDisplay
+import com.ltquiz.test.ui.navigation.XSendNavigation
 
 /**
- * Main app composable with a single minimal screen.
+ * Main app composable with navigation and error handling for XSEND Meet.
  */
 @Composable
 fun LTQuizApp() {
-    Scaffold { _ ->
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = "Simple text",
-                style = MaterialTheme.typography.titleLarge
-            )
-        }
+    val snackbarHostState = remember { SnackbarHostState() }
+    
+    Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) }
+    ) { paddingValues ->
+        XSendNavigation()
+        
+        // Global error display
+        ErrorDisplay(snackbarHostState = snackbarHostState)
     }
 }
