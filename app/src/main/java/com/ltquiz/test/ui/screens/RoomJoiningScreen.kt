@@ -189,9 +189,10 @@ fun RoomJoiningScreen(
                         ),
                         isError = uiState.error != null,
                         supportingText = {
-                            if (uiState.error != null) {
+                            val error = uiState.error
+                            if (error != null) {
                                 Text(
-                                    text = uiState.error,
+                                    text = error,
                                     color = MaterialTheme.colorScheme.error
                                 )
                             }

@@ -85,6 +85,7 @@ class PerformanceBenchmark @Inject constructor(
         val testName = "Video Rendering"
         val frameCount = 300 // Simulate 10 seconds at 30fps
         
+        val startTime = System.currentTimeMillis()
         val executionTime = measureTimeMillis {
             repeat(frameCount) { frame ->
                 // Simulate video frame processing
@@ -92,7 +93,7 @@ class PerformanceBenchmark @Inject constructor(
                 
                 // Update video metrics every 30 frames (1 second)
                 if (frame % 30 == 0) {
-                    val currentFps = 30f * (frame + 1) / ((System.currentTimeMillis() - executionTime) / 1000f)
+                    val currentFps = 30f * (frame + 1) / ((System.currentTimeMillis() - startTime) / 1000f)
                     performanceMonitor.updateVideoMetrics(
                         frameRate = currentFps,
                         droppedFrames = 0,
@@ -171,7 +172,7 @@ class PerformanceBenchmark @Inject constructor(
                 val testTime = measureTimeMillis {
                     // Simulate multi-participant call load
                     repeat(participantCount) { participant ->
-                        launch {
+                        CoroutineScope(Dispatchers.Default).launch {
                             // Simulate peer connection for each participant
                             simulatePeerConnection(participant)
                         }
@@ -187,7 +188,7 @@ class PerformanceBenchmark @Inject constructor(
                 performanceMonitor.updateVideoMetrics(
                     frameRate = 30f - (participantCount * 2), // Simulate degradation
                     droppedFrames = participantCount,
-                    renderingTimeMs = 16 + (participantCount * 2),
+                    renderingTimeMs = (16 + (participantCount * 2)).toLong(),
                     participantCount = participantCount
                 )
             }
@@ -224,7 +225,7 @@ class PerformanceBenchmark @Inject constructor(
      * Simulates packet loss.
      */
     private fun simulatePacketLoss(): Float {
-        return (0f..2f).random()
+        return kotlin.random.Random.nextFloat() * 2f
     }
     
     /**

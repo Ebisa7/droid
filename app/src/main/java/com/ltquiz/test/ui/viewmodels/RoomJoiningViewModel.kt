@@ -39,18 +39,11 @@ class RoomJoiningViewModel @Inject constructor(
             )
 
             try {
-                val success = roomManager.joinRoom(roomCode)
-                if (success) {
-                    _uiState.value = _uiState.value.copy(
-                        isLoading = false,
-                        joinSuccess = true
-                    )
-                } else {
-                    _uiState.value = _uiState.value.copy(
-                        isLoading = false,
-                        error = "Room not found. Please check the code and try again."
-                    )
-                }
+                val room = roomManager.joinRoom(roomCode)
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    joinSuccess = true
+                )
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,

@@ -2,6 +2,7 @@ package com.ltquiz.test.performance
 
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -18,9 +19,7 @@ class PerformanceDashboard @Inject constructor(
      * Gets combined performance data for dashboard display.
      */
     fun getPerformanceDashboardData(): Flow<PerformanceDashboardData> {
-        return combine(
-            performanceMonitor.performanceMetrics
-        ) { metrics ->
+        return performanceMonitor.performanceMetrics.map { metrics ->
             PerformanceDashboardData(
                 metrics = metrics,
                 currentVideoQuality = performanceOptimizer.getCurrentVideoQuality(),

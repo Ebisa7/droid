@@ -23,6 +23,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.ltquiz.test.audio.SoundEffectsManager
 import com.ltquiz.test.models.Participant
+import com.ltquiz.test.ui.animations.AnimationUtils
 import com.ltquiz.test.ui.components.*
 import com.ltquiz.test.ui.viewmodels.CallViewModel
 import kotlinx.coroutines.delay
@@ -253,9 +254,9 @@ private fun AnimatedVideoGrid(
                     enter = scaleIn(animationSpec = tween(400)) + fadeIn()
                 ) {
                     Box(modifier = Modifier.fillMaxSize()) {
-                        localVideoRenderer?.let {
+                        localVideoRenderer?.let { renderer ->
                             AndroidView(
-                                factory = { it },
+                                factory = { context -> renderer },
                                 modifier = Modifier.fillMaxSize()
                             )
                         }
@@ -274,9 +275,9 @@ private fun AnimatedVideoGrid(
                                 .fillMaxWidth()
                                 .weight(1f)
                         ) {
-                            localVideoRenderer?.let {
+                            localVideoRenderer?.let { renderer ->
                                 AndroidView(
-                                    factory = { it },
+                                    factory = { context -> renderer },
                                     modifier = Modifier.fillMaxSize()
                                 )
                             }

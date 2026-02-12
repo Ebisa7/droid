@@ -36,9 +36,12 @@ fun RoomCreationScreen(
     
     // Handle auto-start call when conditions are met
     LaunchedEffect(uiState.shouldAutoStartCall) {
-        if (uiState.shouldAutoStartCall && uiState.room != null) {
-            viewModel.prepareForCallTransition()
-            onStartCall(uiState.room.roomCode)
+        if (uiState.shouldAutoStartCall) {
+            val room = uiState.room
+            if (room != null) {
+                viewModel.prepareForCallTransition()
+                onStartCall(room.roomCode)
+            }
         }
     }
     
@@ -76,6 +79,7 @@ fun RoomCreationScreen(
             }
             
             uiState.error != null -> {
+                val error = uiState.error!!
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -86,7 +90,7 @@ fun RoomCreationScreen(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(
-                            text = uiState.error,
+                            text = error,
                             color = MaterialTheme.colorScheme.error,
                             textAlign = TextAlign.Center
                         )
@@ -99,6 +103,7 @@ fun RoomCreationScreen(
             }
             
             uiState.room != null -> {
+                val room = uiState.room!!
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
@@ -152,7 +157,7 @@ fun RoomCreationScreen(
                                     color = MaterialTheme.colorScheme.onSecondaryContainer
                                 )
                                 Text(
-                                    text = uiState.room.roomCode,
+                                    text = room.roomCode,
                                     style = MaterialTheme.typography.headlineMedium.copy(
                                         fontWeight = FontWeight.Bold
                                     ),
@@ -162,7 +167,7 @@ fun RoomCreationScreen(
                             
                             IconButton(
                                 onClick = {
-                                    clipboardManager.setText(AnnotatedString(uiState.room.roomCode))
+                                    clipboardManager.setText(AnnotatedString(room.roomCode))
                                 }
                             ) {
                                 Icon(
@@ -251,7 +256,7 @@ fun RoomCreationScreen(
                         }
                         
                         Button(
-                            onClick = { onStartCall(uiState.room.roomCode) },
+                            onClick = { onStartCall(room.roomCode) },
                             modifier = Modifier.weight(1f),
                             enabled = uiState.participants.size > 1 // At least host + 1 participant
                         ) {

@@ -167,10 +167,7 @@ fun Throwable.toAppError(): AppError {
                 message?.contains("microphone", ignoreCase = true) == true || 
                 message?.contains("record_audio", ignoreCase = true) == true -> 
                     AppError.PermissionError.MicrophonePermissionDenied()
-                else -> AppError.PermissionError(
-                    this.message ?: "Security exception",
-                    "Permission denied. Please check app permissions."
-                )
+                else -> AppError.PermissionError.PermissionsPermanentlyDenied()
             }
         }
         

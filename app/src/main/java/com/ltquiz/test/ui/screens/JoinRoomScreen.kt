@@ -54,8 +54,11 @@ fun JoinRoomScreen(
     
     // Handle successful join
     LaunchedEffect(uiState.joinSuccess, uiState.roomCode) {
-        if (uiState.joinSuccess && uiState.roomCode != null) {
-            onJoinSuccess(uiState.roomCode)
+        if (uiState.joinSuccess) {
+            val roomCode = uiState.roomCode
+            if (roomCode != null) {
+                onJoinSuccess(roomCode)
+            }
         }
     }
     
@@ -169,9 +172,10 @@ fun JoinRoomScreen(
                 ),
                 isError = uiState.error != null,
                 supportingText = {
-                    if (uiState.error != null) {
+                    val error = uiState.error
+                    if (error != null) {
                         Text(
-                            text = uiState.error,
+                            text = error,
                             color = MaterialTheme.colorScheme.error
                         )
                     }

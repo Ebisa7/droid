@@ -41,10 +41,7 @@ class SettingsViewModel @Inject constructor(
 
     private fun loadSettings() {
         viewModelScope.launch {
-            combine(
-                settingsManager.settings,
-                // We can add identity manager flow here when it's available
-            ) { appSettings ->
+            settingsManager.settings.collect { appSettings ->
                 val user = identityManager.getCurrentUser()
                 _uiState.value = _uiState.value.copy(
                     deviceName = user.displayName,
@@ -57,7 +54,7 @@ class SettingsViewModel @Inject constructor(
                     showNetworkIndicator = appSettings.showNetworkIndicator,
                     enableSoundEffects = appSettings.enableSoundEffects
                 )
-            }.collect { }
+            }
         }
     }
 

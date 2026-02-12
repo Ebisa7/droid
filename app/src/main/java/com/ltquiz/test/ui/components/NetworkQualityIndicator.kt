@@ -219,7 +219,7 @@ fun DetailedNetworkInfo(
                 NetworkInfoRow(
                     label = "Packet Loss",
                     value = "${String.format("%.1f", networkQuality.packetLoss)}%",
-                    valueColor = if (networkQuality.packetLoss > 2.0f) Color.Red else Color.Orange
+                    valueColor = if (networkQuality.packetLoss > 2.0f) Color.Red else Color(0xFFFF9800) // Orange color
                 )
             }
         }

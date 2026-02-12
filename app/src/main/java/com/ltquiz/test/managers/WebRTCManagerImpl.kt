@@ -58,6 +58,7 @@ class WebRTCManagerImpl @Inject constructor(
 
             override fun onSignalingChange(state: PeerConnection.SignalingState?) {}
             override fun onIceConnectionChange(state: PeerConnection.IceConnectionState?) {}
+            override fun onIceConnectionReceivingChange(receiving: Boolean) {}
             override fun onIceGatheringChange(state: PeerConnection.IceGatheringState?) {}
             override fun onRemoveStream(stream: MediaStream?) {}
             override fun onDataChannel(dataChannel: DataChannel?) {}
@@ -87,9 +88,33 @@ class WebRTCManagerImpl @Inject constructor(
                 mandatory.add(MediaConstraints.KeyValuePair("OfferToReceiveVideo", "true"))
             }
             
-            val sdp = peerConnection.createOffer(constraints)
-            peerConnection.setLocalDescription(sdp)
-            sdp
+            kotlinx.coroutines.suspendCancellableCoroutine { continuation ->
+                val observer = object : SdpObserver {
+                    override fun onCreateSuccess(sessionDescription: SessionDescription?) {
+                        sessionDescription?.let {
+                            peerConnection.setLocalDescription(object : SdpObserver {
+                                override fun onSetSuccess() {
+                                    continuation.resumeWith(Result.success(it))
+                                }
+                                override fun onSetFailure(error: String?) {
+                                    continuation.resumeWith(Result.success(null))
+                                }
+                                override fun onCreateSuccess(p0: SessionDescription?) {}
+                                override fun onCreateFailure(p0: String?) {}
+                            }, it)
+                        } ?: continuation.resumeWith(Result.success(null))
+                    }
+                    
+                    override fun onCreateFailure(error: String?) {
+                        continuation.resumeWith(Result.success(null))
+                    }
+                    
+                    override fun onSetSuccess() {}
+                    override fun onSetFailure(error: String?) {}
+                }
+                
+                peerConnection.createOffer(observer, constraints)
+            }
         } catch (e: Exception) {
             null
         }
@@ -100,9 +125,34 @@ class WebRTCManagerImpl @Inject constructor(
         
         return try {
             val constraints = MediaConstraints()
-            val sdp = peerConnection.createAnswer(constraints)
-            peerConnection.setLocalDescription(sdp)
-            sdp
+            
+            kotlinx.coroutines.suspendCancellableCoroutine { continuation ->
+                val observer = object : SdpObserver {
+                    override fun onCreateSuccess(sessionDescription: SessionDescription?) {
+                        sessionDescription?.let {
+                            peerConnection.setLocalDescription(object : SdpObserver {
+                                override fun onSetSuccess() {
+                                    continuation.resumeWith(Result.success(it))
+                                }
+                                override fun onSetFailure(error: String?) {
+                                    continuation.resumeWith(Result.success(null))
+                                }
+                                override fun onCreateSuccess(p0: SessionDescription?) {}
+                                override fun onCreateFailure(p0: String?) {}
+                            }, it)
+                        } ?: continuation.resumeWith(Result.success(null))
+                    }
+                    
+                    override fun onCreateFailure(error: String?) {
+                        continuation.resumeWith(Result.success(null))
+                    }
+                    
+                    override fun onSetSuccess() {}
+                    override fun onSetFailure(error: String?) {}
+                }
+                
+                peerConnection.createAnswer(observer, constraints)
+            }
         } catch (e: Exception) {
             null
         }
@@ -110,7 +160,13 @@ class WebRTCManagerImpl @Inject constructor(
 
     override fun setRemoteDescription(participantId: String, sessionDescription: SessionDescription): Boolean {
         return try {
-            peerConnections[participantId]?.setRemoteDescription(sessionDescription)
+            val peerConnection = peerConnections[participantId] ?: return false
+            peerConnection.setRemoteDescription(object : SdpObserver {
+                override fun onSetSuccess() {}
+                override fun onSetFailure(error: String?) {}
+                override fun onCreateSuccess(p0: SessionDescription?) {}
+                override fun onCreateFailure(p0: String?) {}
+            }, sessionDescription)
             true
         } catch (e: Exception) {
             false

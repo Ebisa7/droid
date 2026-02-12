@@ -318,7 +318,7 @@ fun NetworkQualityAnimation(
             !isConnected -> Color.Red
             networkQuality.contains("Excellent", ignoreCase = true) -> Color.Green
             networkQuality.contains("Good", ignoreCase = true) -> Color.Yellow
-            else -> Color.Orange
+            else -> Color(0xFFFF9800) // Orange color
         },
         animationSpec = tween(300),
         label = "network_color"
