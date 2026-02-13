@@ -88,9 +88,21 @@ jobs:
             -d parse_mode="Markdown"
 
       - name: Build release APK
-        run: ./gradlew assembleRelease -x lintVitalAnalyzeRelease --stacktrace
+        id: build_apk
+        run: |
+          BUILD_LOG=$(mktemp)
+          
+          # Capture build output and potential errors
+          if ! ./gradlew assembleRelease -x lintVitalAnalyzeRelease --stacktrace 2>&1 | tee "$BUILD_LOG"; then
+            # Extract key error information
+            ERROR_SUMMARY=$(tail -30 "$BUILD_LOG" | grep -E "(error:|Error:|FAILURE:|BUILD FAILED|Exception|Task.*failed)" | head -5 | sed 's/"/\\"/g' | tr '\n' '|')
+            echo "error_summary=$ERROR_SUMMARY" >> $GITHUB_OUTPUT
+            echo "build_failed=true" >> $GITHUB_OUTPUT
+            exit 1
+          fi
 
       - name: Send progress update
+        if: success()
         run: |
           curl -s -X POST "https://api.telegram.org/bot${{ env.TG_BOT_TOKEN }}/sendMessage" \
             -d chat_id="${{ env.TG_CHAT_ID }}" \
@@ -98,6 +110,7 @@ jobs:
             -d parse_mode="Markdown"
 
       - name: Get APK info
+        if: success()
         id: apk_info
         run: |
           APK_PATH=$(find app/build/outputs/apk/release -name "*.apk" | head -1)
@@ -108,6 +121,7 @@ jobs:
           echo "apk_name=$APK_NAME" >> $GITHUB_OUTPUT
 
       - name: Send APK to Telegram
+        if: success()
         run: |
           curl -s -X POST "https://api.telegram.org/bot${{ env.TG_BOT_TOKEN }}/sendDocument" \
             -F chat_id="${{ env.TG_CHAT_ID }}" \
@@ -123,10 +137,20 @@ jobs:
             -d text="✅ Checkout code%0A✅ Setup Java%0A✅ Setup Android SDK%0A✅ Cache Gradle%0A✅ Prepare build%0A✅ Build Release APK%0A✅ Upload APK%0A%0A🎉 *Build Completed Successfully!*" \
             -d parse_mode="Markdown"
 
-      - name: Send error notification
+      - name: Send detailed error notification
         if: failure()
         run: |
-          curl -s -X POST "https://api.telegram.org/bot${{ env.TG_BOT_TOKEN }}/sendMessage" \
-            -d chat_id="${{ env.TG_CHAT_ID }}" \
-            -d text="❌ *Build Failed!*%0A%0A🔍 Check the GitHub Actions logs for details.%0A⏰ Failed at: $(date '+%Y-%m-%d %H:%M:%S UTC')" \
-            -d parse_mode="Markdown"
+          ERROR_TEXT="${{ steps.build_apk.outputs.error_summary }}"
+          if [ -n "$ERROR_TEXT" ]; then
+            # Replace | with newlines and format for Telegram
+            FORMATTED_ERRORS=$(echo "$ERROR_TEXT" | tr '|' '\n' | head -4)
+            curl -s -X POST "https://api.telegram.org/bot${{ env.TG_BOT_TOKEN }}/sendMessage" \
+              -d chat_id="${{ env.TG_CHAT_ID }}" \
+              -d text="❌ *Build Failed!*%0A%0A🔍 *Error Details:*%0A\`\`\`%0A$FORMATTED_ERRORS%0A\`\`\`%0A%0A📋 Check GitHub Actions logs for complete details.%0A⏰ Failed at: $(date '+%Y-%m-%d %H:%M:%S UTC')" \
+              -d parse_mode="Markdown"
+          else
+            curl -s -X POST "https://api.telegram.org/bot${{ env.TG_BOT_TOKEN }}/sendMessage" \
+              -d chat_id="${{ env.TG_CHAT_ID }}" \
+              -d text="❌ *Build Failed!*%0A%0A🔍 Check the GitHub Actions logs for details.%0A⏰ Failed at: $(date '+%Y-%m-%d %H:%M:%S UTC')" \
+              -d parse_mode="Markdown"
+          fi

@@ -53,12 +53,27 @@ jobs:
         run: chmod +x gradlew
 
       - name: Quick build validation
+        id: build_check
         run: |
+          # Capture build output and errors
+          BUILD_LOG=$(mktemp)
+          
           # Just compile without building full APK - much faster
-          ./gradlew compileReleaseKotlin compileReleaseJavaWithJavac --no-daemon --stacktrace
+          if ! ./gradlew compileReleaseKotlin compileReleaseJavaWithJavac --no-daemon --stacktrace 2>&1 | tee "$BUILD_LOG"; then
+            echo "kotlin_compile_failed=true" >> $GITHUB_OUTPUT
+            # Extract relevant error lines (last 20 lines usually contain the key errors)
+            ERROR_SUMMARY=$(tail -20 "$BUILD_LOG" | grep -E "(error:|Error:|FAILURE:|BUILD FAILED|Exception)" | head -5 | sed 's/"/\\"/g' | tr '\n' '|')
+            echo "error_summary=$ERROR_SUMMARY" >> $GITHUB_OUTPUT
+            exit 1
+          fi
           
           # Check if resources compile
-          ./gradlew processReleaseResources --no-daemon --stacktrace
+          if ! ./gradlew processReleaseResources --no-daemon --stacktrace 2>&1 | tee -a "$BUILD_LOG"; then
+            echo "resource_compile_failed=true" >> $GITHUB_OUTPUT
+            ERROR_SUMMARY=$(tail -20 "$BUILD_LOG" | grep -E "(error:|Error:|FAILURE:|BUILD FAILED|Exception)" | head -5 | sed 's/"/\\"/g' | tr '\n' '|')
+            echo "error_summary=$ERROR_SUMMARY" >> $GITHUB_OUTPUT
+            exit 1
+          fi
 
       - name: Send success notification
         if: success()
@@ -68,10 +83,20 @@ jobs:
             -d text="✅ *BUILD WILL SUCCEED* ✅%0A%0A🎉 Your code compiles successfully!%0A⚡ Quick check completed in ~3-5 minutes%0A%0A💡 You can now run the full build with confidence." \
             -d parse_mode="Markdown"
 
-      - name: Send failure notification
+      - name: Send failure notification with errors
         if: failure()
         run: |
-          curl -s -X POST "https://api.telegram.org/bot${{ env.TG_BOT_TOKEN }}/sendMessage" \
-            -d chat_id="${{ env.TG_CHAT_ID }}" \
-            -d text="❌ *BUILD WILL FAIL* ❌%0A%0A🚫 Compilation errors detected!%0A⚡ Quick check failed - fix issues before full build%0A%0A🔍 Check GitHub Actions logs for details." \
-            -d parse_mode="Markdown"
+          ERROR_TEXT="${{ steps.build_check.outputs.error_summary }}"
+          if [ -n "$ERROR_TEXT" ]; then
+            # Replace | with newlines and limit message length
+            FORMATTED_ERRORS=$(echo "$ERROR_TEXT" | tr '|' '\n' | head -3)
+            curl -s -X POST "https://api.telegram.org/bot${{ env.TG_BOT_TOKEN }}/sendMessage" \
+              -d chat_id="${{ env.TG_CHAT_ID }}" \
+              -d text="❌ *BUILD WILL FAIL* ❌%0A%0A🚫 Compilation errors detected:%0A%0A\`\`\`%0A$FORMATTED_ERRORS%0A\`\`\`%0A%0A🔍 Check GitHub Actions logs for full details." \
+              -d parse_mode="Markdown"
+          else
+            curl -s -X POST "https://api.telegram.org/bot${{ env.TG_BOT_TOKEN }}/sendMessage" \
+              -d chat_id="${{ env.TG_CHAT_ID }}" \
+              -d text="❌ *BUILD WILL FAIL* ❌%0A%0A🚫 Compilation errors detected!%0A⚡ Quick check failed - fix issues before full build%0A%0A🔍 Check GitHub Actions logs for details." \
+              -d parse_mode="Markdown"
+          fi

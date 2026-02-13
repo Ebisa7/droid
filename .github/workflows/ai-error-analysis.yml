@@ -1,0 +1,272 @@
+name: AI Error Analysis
+
+on:
+  workflow_run:
+    workflows: ["Quick Build Check"]
+    types:
+      - completed
+    branches: [ "main", "develop" ]
+  workflow_dispatch:
+    inputs:
+      force_run:
+        description: 'Force run AI analysis'
+        required: false
+        default: 'false'
+
+env:
+  TG_BOT_TOKEN: ${{ secrets.API }}
+  TG_CHAT_ID: "6373984454"
+  GEMINI_API_KEY: ${{ secrets.AI }}
+
+jobs:
+  ai-analysis:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'failure' || github.event.inputs.force_run == 'true' }}
+    timeout-minutes: 15
+
+    steps:
+      - name: Send AI analysis start notification
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${{ env.TG_BOT_TOKEN }}/sendMessage" \
+            -d chat_id="${{ env.TG_CHAT_ID }}" \
+            -d text="🤖 *AI Error Analysis Started*%0A%0A🔍 Analyzing build failure with Gemini AI...%0A⏳ This may take a few minutes..." \
+            -d parse_mode="Markdown"
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install google-genai requests
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          api-level: 35
+          build-tools: 35.0.0
+
+      - name: Cache Gradle packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - name: Make gradlew executable
+        run: chmod +x gradlew
+
+      - name: Capture full build errors
+        id: capture_errors
+        run: |
+          # Create comprehensive error log
+          ERROR_LOG="build_errors.log"
+          
+          echo "=== GRADLE BUILD ERROR ANALYSIS ===" > "$ERROR_LOG"
+          echo "Timestamp: $(date)" >> "$ERROR_LOG"
+          echo "Repository: ${{ github.repository }}" >> "$ERROR_LOG"
+          echo "Branch: ${{ github.ref_name }}" >> "$ERROR_LOG"
+          echo "Commit: ${{ github.sha }}" >> "$ERROR_LOG"
+          echo "" >> "$ERROR_LOG"
+          
+          # Try to reproduce the exact same build that failed
+          echo "=== ATTEMPTING BUILD REPRODUCTION ===" >> "$ERROR_LOG"
+          
+          # Kotlin compilation
+          echo "" >> "$ERROR_LOG"
+          echo "--- KOTLIN COMPILATION ERRORS ---" >> "$ERROR_LOG"
+          if ! ./gradlew compileReleaseKotlin --no-daemon --stacktrace 2>&1 | tee -a "$ERROR_LOG"; then
+            echo "Kotlin compilation failed" >> "$ERROR_LOG"
+          fi
+          
+          echo "" >> "$ERROR_LOG"
+          echo "--- JAVA COMPILATION ERRORS ---" >> "$ERROR_LOG"
+          if ! ./gradlew compileReleaseJavaWithJavac --no-daemon --stacktrace 2>&1 | tee -a "$ERROR_LOG"; then
+            echo "Java compilation failed" >> "$ERROR_LOG"
+          fi
+          
+          echo "" >> "$ERROR_LOG"
+          echo "--- RESOURCE PROCESSING ERRORS ---" >> "$ERROR_LOG"
+          if ! ./gradlew processReleaseResources --no-daemon --stacktrace 2>&1 | tee -a "$ERROR_LOG"; then
+            echo "Resource processing failed" >> "$ERROR_LOG"
+          fi
+          
+          echo "" >> "$ERROR_LOG"
+          echo "--- DEPENDENCY RESOLUTION ---" >> "$ERROR_LOG"
+          ./gradlew dependencies --configuration releaseRuntimeClasspath 2>&1 | tee -a "$ERROR_LOG" || true
+          
+          echo "" >> "$ERROR_LOG"
+          echo "--- PROJECT STRUCTURE ---" >> "$ERROR_LOG"
+          find app/src -name "*.kt" -o -name "*.java" | head -20 >> "$ERROR_LOG"
+          
+          echo "" >> "$ERROR_LOG"
+          echo "--- BUILD GRADLE FILES ---" >> "$ERROR_LOG"
+          echo "=== app/build.gradle.kts ===" >> "$ERROR_LOG"
+          cat app/build.gradle.kts >> "$ERROR_LOG" 2>/dev/null || echo "Could not read app/build.gradle.kts" >> "$ERROR_LOG"
+          
+          echo "" >> "$ERROR_LOG"
+          echo "=== gradle/libs.versions.toml ===" >> "$ERROR_LOG"
+          cat gradle/libs.versions.toml >> "$ERROR_LOG" 2>/dev/null || echo "Could not read libs.versions.toml" >> "$ERROR_LOG"
+
+      - name: Create AI analysis script
+        run: |
+          cat > ai_analyzer.py << 'EOF'
+          import os
+          import sys
+          from google import genai
+          from google.genai import types
+          
+          def analyze_build_errors():
+              try:
+                  # Read the error log
+                  with open('build_errors.log', 'r', encoding='utf-8') as f:
+                      error_log = f.read()
+                  
+                  client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
+                  model = "gemini-2.0-flash-exp"
+                  
+                  prompt = f"""
+          You are an expert Android developer and build system specialist. Analyze this Android build failure log and provide a comprehensive analysis.
+          
+          BUILD ERROR LOG:
+          {error_log}
+          
+          Please provide:
+          
+          1. **ROOT CAUSE ANALYSIS**: What exactly caused the build to fail? Be specific about the primary issue.
+          
+          2. **DETAILED EXPLANATION**: Explain why this error occurred in technical terms that a developer can understand.
+          
+          3. **STEP-BY-STEP FIX**: Provide exact steps to fix this issue, including:
+             - Which files to modify
+             - Exact code changes needed
+             - Any dependencies to add/remove
+             - Configuration changes required
+          
+          4. **PREVENTION**: How to prevent this error in the future.
+          
+          5. **RELATED ISSUES**: Any other potential problems you notice in the build configuration.
+          
+          Format your response clearly with headers and be very specific about file paths and code changes. If you see multiple errors, prioritize them by importance.
+          """
+                  
+                  contents = [
+                      types.Content(
+                          role="user",
+                          parts=[types.Part.from_text(text=prompt)]
+                      )
+                  ]
+                  
+                  print("🤖 Analyzing build errors with Gemini AI...")
+                  
+                  response_text = ""
+                  for chunk in client.models.generate_content_stream(
+                      model=model,
+                      contents=contents,
+                      config=types.GenerateContentConfig(
+                          max_output_tokens=4000,
+                          temperature=0.1
+                      )
+                  ):
+                      if chunk.text:
+                          response_text += chunk.text
+                          print(chunk.text, end="")
+                  
+                  # Save analysis to file
+                  with open('ai_analysis.txt', 'w', encoding='utf-8') as f:
+                      f.write(response_text)
+                  
+                  return response_text
+                  
+              except Exception as e:
+                  error_msg = f"AI Analysis failed: {str(e)}"
+                  print(error_msg)
+                  with open('ai_analysis.txt', 'w') as f:
+                      f.write(error_msg)
+                  return error_msg
+          
+          if __name__ == "__main__":
+              analyze_build_errors()
+          EOF
+
+      - name: Run AI analysis
+        id: ai_analysis
+        run: |
+          python ai_analyzer.py
+          
+          # Prepare analysis for Telegram (truncate if too long)
+          ANALYSIS=$(cat ai_analysis.txt)
+          
+          # Split into chunks if too long for Telegram (max ~4000 chars per message)
+          echo "$ANALYSIS" > full_analysis.txt
+          
+          # Create a summary for the first message
+          SUMMARY=$(echo "$ANALYSIS" | head -50 | tail -20)
+          echo "analysis_summary<<EOF" >> $GITHUB_OUTPUT
+          echo "$SUMMARY" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Send AI analysis to Telegram (Part 1)
+        run: |
+          ANALYSIS_PART1=$(head -80 ai_analysis.txt | tail -60)
+          
+          curl -s -X POST "https://api.telegram.org/bot${{ env.TG_BOT_TOKEN }}/sendMessage" \
+            -d chat_id="${{ env.TG_CHAT_ID }}" \
+            -d text="🤖 *AI BUILD ERROR ANALYSIS* 🤖%0A%0A📋 *Analysis Results (Part 1/3):*%0A%0A\`\`\`%0A$ANALYSIS_PART1%0A\`\`\`" \
+            -d parse_mode="Markdown"
+
+      - name: Send AI analysis to Telegram (Part 2)
+        run: |
+          ANALYSIS_PART2=$(head -160 ai_analysis.txt | tail -80)
+          
+          curl -s -X POST "https://api.telegram.org/bot${{ env.TG_BOT_TOKEN }}/sendMessage" \
+            -d chat_id="${{ env.TG_CHAT_ID }}" \
+            -d text="🤖 *AI ANALYSIS (Part 2/3):*%0A%0A\`\`\`%0A$ANALYSIS_PART2%0A\`\`\`" \
+            -d parse_mode="Markdown"
+
+      - name: Send AI analysis to Telegram (Part 3)
+        run: |
+          ANALYSIS_PART3=$(tail -80 ai_analysis.txt)
+          
+          curl -s -X POST "https://api.telegram.org/bot${{ env.TG_BOT_TOKEN }}/sendMessage" \
+            -d chat_id="${{ env.TG_CHAT_ID }}" \
+            -d text="🤖 *AI ANALYSIS (Part 3/3):*%0A%0A\`\`\`%0A$ANALYSIS_PART3%0A\`\`\`%0A%0A✅ *Analysis Complete!*%0ANow you know exactly what to fix! 🛠️" \
+            -d parse_mode="Markdown"
+
+      - name: Upload full analysis as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ai-build-analysis
+          path: |
+            ai_analysis.txt
+            build_errors.log
+          retention-days: 30
+
+      - name: Send completion notification
+        if: success()
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${{ env.TG_BOT_TOKEN }}/sendMessage" \
+            -d chat_id="${{ env.TG_CHAT_ID }}" \
+            -d text="✅ *AI Analysis Completed Successfully!*%0A%0A📁 Full analysis saved as GitHub artifact%0A🔗 Check the Actions tab for detailed logs%0A%0A💡 Use the AI recommendations to fix your build!" \
+            -d parse_mode="Markdown"
+
+      - name: Send error notification
+        if: failure()
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${{ env.TG_BOT_TOKEN }}/sendMessage" \
+            -d chat_id="${{ env.TG_CHAT_ID }}" \
+            -d text="❌ *AI Analysis Failed*%0A%0A🔍 Check GitHub Actions logs for details%0A⚠️ You may need to check the build errors manually" \
+            -d parse_mode="Markdown"
