@@ -1,55 +1,91 @@
 [versions]
-androidGradlePlugin = "8.7.3"
-androidxActivity = "1.9.3"
-androidxComposeBom = "2026.01.00"
-androidxCore = "1.15.0"
-# @keep
-compileSdk = "35"
-hilt = "2.52"
-junit = "4.13.2"
-kotlin = "2.2.0"
-kotlinxCoroutinesTest = "1.7.3"
-ksp = "2.2.0-1.0.28"
-mockk = "1.13.8"
-okhttp = "4.12.0"
-junitJupiter = "5.10.1"
-zxing = "3.5.3"
-kotlinxSerialization = "1.6.3"
-mlkitBarcodeScanning = "17.2.0"
-cameraX = "1.3.1"
-webrtc = "137.7151.05"
-navigation = "2.8.5"
-lottie = "6.1.0"
-# @keep
+# Android
+androidGradlePlugin = "8.5.2"
+compileSdk = "34"
+targetSdk = "34"
 minSdk = "23"
-# @keep
-targetSdk = "35"
+
+# Kotlin
+kotlin = "2.0.21"
+ksp = "2.0.21-1.0.25"
+kotlinxSerialization = "1.6.3"
+kotlinxCoroutinesTest = "1.7.3"
+
+# Compose
+androidxComposeBom = "2024.12.01"
+androidxActivity = "1.9.3"
+
+# Core
+androidxCore = "1.13.1"
+navigation = "2.8.5"
+
+# DI
+hilt = "2.52"
+
+# Network
+okhttp = "4.12.0"
+
+# Testing
+junit = "4.13.2"
+junitJupiter = "5.10.1"
+mockk = "1.13.8"
+
+# Camera / QR
+cameraX = "1.3.1"
+mlkitBarcodeScanning = "17.2.0"
+
+# WebRTC
+webrtc = "137.7151.05"
+
+# UI
+lottie = "6.1.0"
 
 [libraries]
-androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "androidxActivity" }
-androidx-compose-bom = { group = "androidx.compose", name = "compose-bom-alpha", version.ref = "androidxComposeBom" }
+# Compose
+androidx-compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "androidxComposeBom" }
 androidx-compose-material3 = { group = "androidx.compose.material3", name = "material3" }
-androidx-compose-ui-tooling-core = { group = "androidx.compose.ui", name = "ui-tooling" }
 androidx-compose-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview" }
+androidx-compose-ui-tooling = { group = "androidx.compose.ui", name = "ui-tooling" }
+
+# Activity
+androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "androidxActivity" }
+
+# Core
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "androidxCore" }
+
+# Navigation
+navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigation" }
+navigation-hilt = { group = "androidx.hilt", name = "hilt-navigation-compose", version = "1.2.0" }
+
+# Hilt
 hilt-android = { group = "com.google.dagger", name = "hilt-android", version.ref = "hilt" }
 hilt-compiler = { group = "com.google.dagger", name = "hilt-compiler", version.ref = "hilt" }
+
+# Network
+okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp" }
+
+# Serialization
+kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinxSerialization" }
+
+# Testing
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 junit-jupiter = { group = "org.junit.jupiter", name = "junit-jupiter", version.ref = "junitJupiter" }
 kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "kotlinxCoroutinesTest" }
-kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinxSerialization" }
 mockk = { group = "io.mockk", name = "mockk", version.ref = "mockk" }
-okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp" }
-zxing-core = { group = "com.google.zxing", name = "core", version.ref = "zxing" }
-zxing-android-embedded = { group = "com.journeyapps", name = "zxing-android-embedded", version = "4.3.0" }
-mlkit-barcode-scanning = { group = "com.google.mlkit", name = "barcode-scanning", version.ref = "mlkitBarcodeScanning" }
+
+# CameraX
 camerax-core = { group = "androidx.camera", name = "camera-core", version.ref = "cameraX" }
 camerax-camera2 = { group = "androidx.camera", name = "camera-camera2", version.ref = "cameraX" }
 camerax-lifecycle = { group = "androidx.camera", name = "camera-lifecycle", version.ref = "cameraX" }
 camerax-view = { group = "androidx.camera", name = "camera-view", version.ref = "cameraX" }
+
+# MLKit QR
+mlkit-barcode-scanning = { group = "com.google.mlkit", name = "barcode-scanning", version.ref = "mlkitBarcodeScanning" }
+
+# WebRTC
 webrtc-android = { group = "io.github.webrtc-sdk", name = "android", version.ref = "webrtc" }
-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigation" }
-navigation-hilt = { group = "androidx.hilt", name = "hilt-navigation-compose", version = "1.2.0" }
+
+# Lottie
 lottie-compose = { group = "com.airbnb.android", name = "lottie-compose", version.ref = "lottie" }
 
 [plugins]
