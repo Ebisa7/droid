@@ -130,18 +130,17 @@ class QRCodeManagerImpl @Inject constructor(
                 
                 barcodeScanner.process(image)
                     .addOnSuccessListener { barcodes ->
-                        var roomData: RoomData? = null
-                        for (barcode in barcodes) {
+                        // Find the first valid QR code
+                        val roomData = barcodes.firstNotNullOfOrNull { barcode ->
                             if (barcode.format == Barcode.FORMAT_QR_CODE) {
                                 barcode.rawValue?.let { qrContent ->
                                     try {
-                                        roomData = json.decodeFromString<RoomData>(qrContent)
-                                        break
+                                        json.decodeFromString<RoomData>(qrContent)
                                     } catch (e: Exception) {
-                                        // Invalid QR code format, continue to next barcode
+                                        null // Invalid QR code format, continue to next barcode
                                     }
                                 }
-                            }
+                            } else null
                         }
                         continuation.resume(roomData)
                     }
@@ -170,18 +169,21 @@ class QRCodeManagerImpl @Inject constructor(
             
             barcodeScanner.process(image)
                 .addOnSuccessListener { barcodes ->
-                    for (barcode in barcodes) {
+                    // Find the first valid QR code
+                    val validRoomData = barcodes.firstNotNullOfOrNull { barcode ->
                         if (barcode.format == Barcode.FORMAT_QR_CODE) {
                             barcode.rawValue?.let { qrContent ->
                                 try {
-                                    val roomData = json.decodeFromString<RoomData>(qrContent)
-                                    onQRCodeFound(roomData)
-                                    break
+                                    json.decodeFromString<RoomData>(qrContent)
                                 } catch (e: Exception) {
-                                    // Invalid QR code format, ignore
+                                    null // Invalid QR code format, ignore
                                 }
                             }
-                        }
+                        } else null
+                    }
+                    
+                    validRoomData?.let { roomData ->
+                        onQRCodeFound(roomData)
                     }
                 }
                 .addOnFailureListener {
