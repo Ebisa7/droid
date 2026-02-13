@@ -80,7 +80,7 @@ jobs:
         run: |
           curl -s -X POST "https://api.telegram.org/bot${{ env.TG_BOT_TOKEN }}/sendMessage" \
             -d chat_id="${{ env.TG_CHAT_ID }}" \
-            -d text="✅ *BUILD WILL SUCCEED* ✅%0A%0A🎉 Your code compiles successfully!%0A⚡ Quick check completed in ~3-5 minutes%0A%0A💡 You can now run the full build with confidence." \
+            -d text="✅ *COMPILATION SUCCESSFUL* ✅%0A%0A🎉 Your code compiles without errors!%0A⚡ Quick compilation check completed%0A%0A⚠️ Note: Full build may still fail during packaging/signing" \
             -d parse_mode="Markdown"
 
       - name: Send failure notification with errors
@@ -92,11 +92,11 @@ jobs:
             FORMATTED_ERRORS=$(echo "$ERROR_TEXT" | tr '|' '\n' | head -3)
             curl -s -X POST "https://api.telegram.org/bot${{ env.TG_BOT_TOKEN }}/sendMessage" \
               -d chat_id="${{ env.TG_CHAT_ID }}" \
-              -d text="❌ *BUILD WILL FAIL* ❌%0A%0A🚫 Compilation errors detected:%0A%0A\`\`\`%0A$FORMATTED_ERRORS%0A\`\`\`%0A%0A🔍 Check GitHub Actions logs for full details." \
+              -d text="❌ *COMPILATION FAILED* ❌%0A%0A🚫 Compilation errors detected:%0A%0A\`\`\`%0A$FORMATTED_ERRORS%0A\`\`\`%0A%0A🔍 Check GitHub Actions logs for full details." \
               -d parse_mode="Markdown"
           else
             curl -s -X POST "https://api.telegram.org/bot${{ env.TG_BOT_TOKEN }}/sendMessage" \
               -d chat_id="${{ env.TG_CHAT_ID }}" \
-              -d text="❌ *BUILD WILL FAIL* ❌%0A%0A🚫 Compilation errors detected!%0A⚡ Quick check failed - fix issues before full build%0A%0A🔍 Check GitHub Actions logs for details." \
+              -d text="❌ *COMPILATION FAILED* ❌%0A%0A🚫 Compilation errors detected!%0A⚡ Quick check failed - fix issues before full build%0A%0A🔍 Check GitHub Actions logs for details." \
               -d parse_mode="Markdown"
           fi

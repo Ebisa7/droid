@@ -2,10 +2,10 @@ name: AI Error Analysis
 
 on:
   workflow_run:
-    workflows: ["Quick Build Check"]
+    workflows: ["Build Release APK"]
     types:
       - completed
-    branches: [ "main", "develop" ]
+    branches: [ "main" ]
   workflow_dispatch:
     inputs:
       force_run:
