@@ -47,8 +47,8 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
         with:
-          api-level: 35
-          build-tools: 35.0.0
+          api-level: 34
+          build-tools: 34.0.0
 
       - name: Send progress update
         run: |
@@ -114,27 +114,70 @@ jobs:
         id: apk_info
         run: |
           APK_PATH=$(find app/build/outputs/apk/release -name "*.apk" | head -1)
+          if [ -z "$APK_PATH" ] || [ ! -f "$APK_PATH" ]; then
+            echo "❌ APK file not found!"
+            exit 1
+          fi
           APK_SIZE=$(du -h "$APK_PATH" | cut -f1)
           APK_NAME=$(basename "$APK_PATH")
           echo "apk_path=$APK_PATH" >> $GITHUB_OUTPUT
           echo "apk_size=$APK_SIZE" >> $GITHUB_OUTPUT
           echo "apk_name=$APK_NAME" >> $GITHUB_OUTPUT
+          echo "✅ Found APK: $APK_NAME ($APK_SIZE)"
 
       - name: Send APK to Telegram
         if: success()
+        id: telegram_upload
         run: |
-          curl -s -X POST "https://api.telegram.org/bot${{ env.TG_BOT_TOKEN }}/sendDocument" \
+          echo "📤 Uploading APK to Telegram..."
+          
+          # Upload APK with timeout and error handling
+          UPLOAD_RESPONSE=$(curl -s -w "%{http_code}" -X POST "https://api.telegram.org/bot${{ env.TG_BOT_TOKEN }}/sendDocument" \
             -F chat_id="${{ env.TG_CHAT_ID }}" \
             -F document=@"${{ steps.apk_info.outputs.apk_path }}" \
             -F caption="🎉 *LTQuiz Release APK Built Successfully!*%0A%0A📱 *APK Details:*%0A• Name: \`${{ steps.apk_info.outputs.apk_name }}\`%0A• Size: ${{ steps.apk_info.outputs.apk_size }}%0A• Version: 1.0 (1)%0A• Package: com.ltquiz.test%0A%0A✅ Ready to install on Android devices!%0A⏰ Completed at: $(date '+%Y-%m-%d %H:%M:%S UTC')" \
-            -F parse_mode="Markdown"
+            -F parse_mode="Markdown" \
+            --connect-timeout 30 \
+            --max-time 300)
+          
+          HTTP_CODE="${UPLOAD_RESPONSE: -3}"
+          RESPONSE_BODY="${UPLOAD_RESPONSE%???}"
+          
+          if [ "$HTTP_CODE" -eq 200 ]; then
+            echo "✅ APK uploaded successfully to Telegram"
+            echo "upload_success=true" >> $GITHUB_OUTPUT
+          else
+            echo "❌ Failed to upload APK to Telegram (HTTP: $HTTP_CODE)"
+            echo "Response: $RESPONSE_BODY"
+            echo "upload_success=false" >> $GITHUB_OUTPUT
+            
+            # Send fallback notification without APK
+            curl -s -X POST "https://api.telegram.org/bot${{ env.TG_BOT_TOKEN }}/sendMessage" \
+              -d chat_id="${{ env.TG_CHAT_ID }}" \
+              -d text="🎉 *LTQuiz Release APK Built Successfully!*%0A%0A📱 *APK Details:*%0A• Name: \`${{ steps.apk_info.outputs.apk_name }}\`%0A• Size: ${{ steps.apk_info.outputs.apk_size }}%0A• Version: 1.0 (1)%0A• Package: com.ltquiz.test%0A%0A⚠️ APK upload failed, but build completed successfully!%0A📋 Check GitHub Actions artifacts for APK download.%0A⏰ Completed at: $(date '+%Y-%m-%d %H:%M:%S UTC')" \
+              -d parse_mode="Markdown"
+          fi
+
+      - name: Upload APK as artifact
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ltquiz-release-apk
+          path: ${{ steps.apk_info.outputs.apk_path }}
+          retention-days: 30
 
       - name: Send final status
         if: success()
         run: |
+          if [ "${{ steps.telegram_upload.outputs.upload_success }}" = "true" ]; then
+            STATUS_TEXT="✅ Upload APK"
+          else
+            STATUS_TEXT="⚠️ Upload APK (fallback sent)"
+          fi
+          
           curl -s -X POST "https://api.telegram.org/bot${{ env.TG_BOT_TOKEN }}/sendMessage" \
             -d chat_id="${{ env.TG_CHAT_ID }}" \
-            -d text="✅ Checkout code%0A✅ Setup Java%0A✅ Setup Android SDK%0A✅ Cache Gradle%0A✅ Prepare build%0A✅ Build Release APK%0A✅ Upload APK%0A%0A🎉 *Build Completed Successfully!*" \
+            -d text="✅ Checkout code%0A✅ Setup Java%0A✅ Setup Android SDK%0A✅ Cache Gradle%0A✅ Prepare build%0A✅ Build Release APK%0A$STATUS_TEXT%0A✅ Upload Artifact%0A%0A🎉 *Build Completed Successfully!*" \
             -d parse_mode="Markdown"
 
       - name: Send detailed error notification
