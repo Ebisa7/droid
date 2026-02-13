@@ -42,10 +42,11 @@ class SettingsViewModel @Inject constructor(
     private fun loadSettings() {
         viewModelScope.launch {
             settingsManager.settings.collect { appSettings ->
-                val user = identityManager.getCurrentUser()
+                val displayName = identityManager.getDisplayName()
+                val userId = identityManager.getUserId()
                 _uiState.value = _uiState.value.copy(
-                    deviceName = user.displayName,
-                    deviceId = user.userId,
+                    deviceName = displayName,
+                    deviceId = userId,
                     defaultVideoEnabled = appSettings.defaultVideoEnabled,
                     defaultAudioEnabled = appSettings.defaultAudioEnabled,
                     videoQuality = appSettings.videoQuality,
@@ -62,7 +63,7 @@ class SettingsViewModel @Inject constructor(
         if (newName.isBlank()) return
         
         viewModelScope.launch {
-            identityManager.updateDisplayName(newName)
+            identityManager.setDisplayName(newName)
             _uiState.value = _uiState.value.copy(deviceName = newName)
         }
     }

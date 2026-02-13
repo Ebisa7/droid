@@ -41,6 +41,13 @@ android {
 
     kotlinOptions {
         jvmTarget = "17"
+        freeCompilerArgs += listOf(
+            "-opt-in=kotlin.RequiresOptIn",
+            "-opt-in=kotlin.contracts.ExperimentalContracts",
+            "-opt-in=kotlin.ExperimentalStdlibApi",
+            "-opt-in=kotlin.experimental.ExperimentalTypeInference",
+            "-opt-in=kotlin.experimental.ExperimentalBreakContinue"
+        )
     }
 
     testOptions {

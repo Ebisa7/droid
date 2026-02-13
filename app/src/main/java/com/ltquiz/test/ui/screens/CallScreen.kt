@@ -325,9 +325,13 @@ private fun AnimatedVideoGrid(
                                     .aspectRatio(1f)
                                     .clip(RoundedCornerShape(8.dp))
                             ) {
-                                localVideoRenderer?.let {
+                                localVideoRenderer?.let { renderer ->
                                     AndroidView(
-                                        factory = { it },
+                                        factory = { context -> 
+                                            renderer.apply {
+                                                // Initialize the renderer with the context if needed
+                                            }
+                                        },
                                         modifier = Modifier.fillMaxSize()
                                     )
                                 }
@@ -552,9 +556,9 @@ private fun VideoGrid(
         1 -> {
             // Single participant (full screen)
             Box(modifier = Modifier.fillMaxSize()) {
-                localVideoRenderer?.let {
+                localVideoRenderer?.let { renderer ->
                     AndroidView(
-                        factory = { it },
+                        factory = { context -> renderer },
                         modifier = Modifier.fillMaxSize()
                     )
                 }
@@ -569,9 +573,9 @@ private fun VideoGrid(
                         .fillMaxWidth()
                         .weight(1f)
                 ) {
-                    localVideoRenderer?.let {
+                    localVideoRenderer?.let { renderer ->
                         AndroidView(
-                            factory = { it },
+                            factory = { context -> renderer },
                             modifier = Modifier.fillMaxSize()
                         )
                     }
@@ -608,9 +612,9 @@ private fun VideoGrid(
                             .aspectRatio(1f)
                             .clip(RoundedCornerShape(8.dp))
                     ) {
-                        localVideoRenderer?.let {
+                        localVideoRenderer?.let { renderer ->
                             AndroidView(
-                                factory = { it },
+                                factory = { context -> renderer },
                                 modifier = Modifier.fillMaxSize()
                             )
                         }
