@@ -99,5 +99,5 @@ dependencies {
     testImplementation(libs.mockk)
     testImplementation(libs.kotlinx.coroutines.test)
     
-    debugImplementation(libs.androidx.compose.ui.tooling.core)
+    debugImplementation(libs.androidx.compose.ui.tooling)
 }
