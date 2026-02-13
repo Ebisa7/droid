@@ -136,7 +136,7 @@ jobs:
                       error_log = f.read()
                   
                   client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
-                  model = "gemini-2.0-flash-exp"
+                  model = "gemini-2.5-flash"
                   
                   prompt = f"""
           You are an expert Android developer and build system specialist. Analyze this Android build failure log and provide a comprehensive analysis.
